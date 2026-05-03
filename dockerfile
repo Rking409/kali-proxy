@@ -2,7 +2,7 @@
 FROM python:3.12-alpine
 
 # 2. Mettre à jour les paquets système pour corriger les vulnérabilités OS
-RUN apk update && apk upgrade -y && rm -rf /var/cache/apk/*
+RUN apk update && apk upgrade && rm -rf /var/cache/apk/*
 
 # 3. Créer un utilisateur non-root pour ne pas exécuter le proxy avec les droits admin
 RUN useradd -m proxyuser
