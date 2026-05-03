@@ -13,6 +13,11 @@ COPY --chown=proxyuser:proxyuser proxy.py .
 
 # 5. Copier le fichier et changer le propriétaire
 COPY --chown=proxyuser:proxyuser proxy.py .
+RUN pip install --no-cache-dir PySocks
+
+# Script de lancement pour démmarrer ET le Proxy
+RUN echo -e "#!/bin/sh\ntor &\npython proxy.py" > entrypoint.sh
+RUN chmod +x entrypoint.sh
 
 # 6. Passer à l'utilisateur non-privilégié
 USER proxyuser
