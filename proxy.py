@@ -1,3 +1,4 @@
+import socks
 import socket
 import threading
 import logging
@@ -90,9 +91,14 @@ class PyProxy:
 
             logging.info(f"Relais vers : {target_host}:{target_port}")
 
-            # 3. Connexion au serveur cible
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as target_sock:
-                target_sock.settimeout(5.0) # Éviter de bloquer indéfiniment
+            try:
+                # Créer un socket qui passe par le proxy SOCKS5 de Tor
+                target_sock = socks.socksocket()
+                target_sock.set_proxy(socks.SOCKS5, "127.0.0.1", 9050)
+                target_sock.settimeout(10.0)
+                
+                logging.info(f"Relais via TOR vers : {target_host}:{target_port}")
+                
                 target_sock.connect((target_host, target_port))
                 target_sock.sendall(request)
                 
@@ -100,6 +106,8 @@ class PyProxy:
                     data = target_sock.recv(4096)
                     if not data: break
                     client_sock.sendall(data)
+            except Exception as e:
+                logging.error(f"Erreur Tor : {e}")
 
         except Exception as e:
             logging.error(f"Erreur HTTP vers {target_host} : {e}")
