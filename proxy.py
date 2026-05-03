@@ -6,7 +6,7 @@ import logging
 logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
 
 class PyProxy:
-    def __init__(self, host='127.0.0.1', port=8080):
+    def __init__(self, host='0.0.0.0', port=8080):
         self.host = host
         self.port = port
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
