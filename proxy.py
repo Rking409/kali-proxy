@@ -6,7 +6,7 @@ import logging
 logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
 
 class PyProxy:
-    def __init__(self, host='0.0.0.0', port=8080):
+    def __init__(self, host='127.0.0.1', port=8080):
         self.host = host
         self.port = port
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -56,25 +56,53 @@ class PyProxy:
             client_sock.close()
 
     def handle_http(self, client_sock, request, url):
-        # Extraction de l'hôte et du port
-        if "://" in url:
-            url = url.split("://")[1]
-        
-        parts = url.split("/")
-        host_port = parts[0].split(":")
-        target_host = host_port[0]
-        target_port = int(host_port[1]) if len(host_port) > 1 else 80
+        try:
+            # 1. Extraire l'hôte de l'URL ou des Headers
+            target_host = ""
+            target_port = 80
 
-        # Envoi au serveur cible
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as target_sock:
-            target_sock.connect((target_host, target_port))
-            target_sock.sendall(request)
+            # Si l'URL est complète (http://...)
+            if "://" in url:
+                url = url.split("://")[1]
             
-            # Relais de la réponse au client
-            while True:
-                data = target_sock.recv(4096)
-                if not data: break
-                client_sock.sendall(data)
+            parts = url.split("/")
+            host_parts = parts[0].split(":")
+            target_host = host_parts[0]
+            if len(host_parts) > 1:
+                target_port = int(host_parts[1])
+
+            # 2. Si l'hôte est vide (requête relative), on cherche dans le header "Host"
+            if not target_host or target_host == "/":
+                lines = request.decode('latin-1').split('\r\n')
+                for line in lines:
+                    if line.startswith("Host:"):
+                        host_val = line.split(" ")[1]
+                        if ":" in host_val:
+                            target_host, target_port = host_val.split(":")
+                            target_port = int(target_port)
+                        else:
+                            target_host = host_val
+                        break
+
+            if not target_host:
+                logging.error("Impossible de trouver l'hôte cible")
+                return
+
+            logging.info(f"Relais vers : {target_host}:{target_port}")
+
+            # 3. Connexion au serveur cible
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as target_sock:
+                target_sock.settimeout(5.0) # Éviter de bloquer indéfiniment
+                target_sock.connect((target_host, target_port))
+                target_sock.sendall(request)
+                
+                while True:
+                    data = target_sock.recv(4096)
+                    if not data: break
+                    client_sock.sendall(data)
+
+        except Exception as e:
+            logging.error(f"Erreur HTTP vers {target_host} : {e}")
 
     def handle_https(self, client_sock, url):
         target_host, target_port = url.split(":")
