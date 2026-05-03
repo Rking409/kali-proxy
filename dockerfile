@@ -4,14 +4,17 @@ FROM python:3.12-alpine
 # 2. Mettre à jour les paquets système pour corriger les vulnérabilités OS
 RUN apk update && apk upgrade && rm -rf /var/cache/apk/*
 
-# 3. Créer un utilisateur non-root pour ne pas exécuter le proxy avec les droits admin
-RUN useradd -m proxyuser
+# 3. Création de l'utilisateur (syntaxe Alpine)
+RUN adduser -D proxyuser
 WORKDIR /home/proxyuser
 
-# 4. Copier le fichier et changer le propriétaire
+# 4. Copie du script avec les bons droits
 COPY --chown=proxyuser:proxyuser proxy.py .
 
-# 5. Passer à l'utilisateur non-privilégié
+# 5. Copier le fichier et changer le propriétaire
+COPY --chown=proxyuser:proxyuser proxy.py .
+
+# 6. Passer à l'utilisateur non-privilégié
 USER proxyuser
 
 # Le port 8080 est > 1024, donc autorisé pour un utilisateur non-root
