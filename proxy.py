@@ -6,7 +6,7 @@ import logging
 logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
 
 class PyProxy:
-    def __init__(self, host='0.0.0.0', port=8080):
+    def __init__(self, host='127.0.0.1', port=8080):
         self.host = host
         self.port = port
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -25,23 +25,33 @@ class PyProxy:
 
     def proxy_thread(self, client_sock):
         try:
-            # Recevoir la requête initiale
+            # Recevoir les données brutes (octets)
             request = client_sock.recv(4096)
             if not request:
                 return
 
-            first_line = request.split(b'\n')[0].decode('utf-8')
-            method, url, _ = first_line.split(' ')
+            # On ne décode QUE la première ligne pour l'analyse
+            # On utilise 'latin-1' qui ne plante jamais, contrairement à 'utf-8'
+            try:
+                first_line = request.split(b'\n')[0].decode('latin-1').strip()
+                logging.info(f"Requête : {first_line}")
+                
+                parts = first_line.split(' ')
+                if len(parts) < 3:
+                    return
+                
+                method, url, _ = parts
+            except Exception as e:
+                logging.error(f"Erreur décodage ligne : {e}")
+                return
 
             if method == "CONNECT":
-                # Gestion du HTTPS
                 self.handle_https(client_sock, url)
             else:
-                # Gestion du HTTP
                 self.handle_http(client_sock, request, url)
 
         except Exception as e:
-            logging.error(f"Erreur lors du traitement : {e}")
+            logging.error(f"Erreur générale : {e}")
         finally:
             client_sock.close()
 
